@@ -45,39 +45,55 @@ class ProductSpider(Spider):
 	# Array of allowed domain names (Scrapy option)
 	allowed_domains = [BASE_DOMAIN]
 
+	#https://www.amazon.com/s?k=gaming+pc&page=2
 	def search_url(self, key, page_no):
 		"""
 		Generates search URL for a given keyword and page number
 		:param key: Search Keyword
 		:param page_no: Page number
 		"""
-		# TODO (1) Define search URL format
-		pass
+		# (1) Define search URL format
+		# this stuff would be useful if given a normal key
+		# keyword_str = ""
+		# key.strip()
+		# keyword_str = key.replace(" ", "+")
+
+		url_str = f'{self.BASE_URL}/s?k={key}&page={page_no}'
+
+		return url_str
 
 	def overview_url(self, key):
 		"""
 		Generates product overview URL for a given asin
 		:param key: Product asin
 		"""
-		# TODO (2) Define product overview URL format
-		pass
+		#(2) Define product overview URL format
+		return f'{self.BASE_URL}/dp/{key}'
 
-	#
+	# https://www.amazon.com/product-reviews/B088X2YR3X?pageNumber=2
 	def reviews_url(self, key, page_no):
 		"""
 		Generates product reviews URL for a given asin and page number
 		:param key: Product asin
 		:param page_no: Page number
 		"""
-		# TODO (3) Define product reviews URL format
-		pass
+		#(3) Define product reviews URL format
+		return f'{self.BASE_URL}/product-reviews/{key}?pageNumber={page_no}'
 
 	def start_requests(self):
 		"""
 		Scrapy calls this function at the beginning of the crawl
 		"""
-		# TODO (4) Yield a search request for each search keyword
-		pass
+		#(4) Yield a search request for each search keyword
+		for keyword in self.KEYWORDS:
+			yield Request(
+				url=self.search_url(key=keyword, page_no=1),
+				callback=self.parse_search,
+				cb_kwargs=dict(
+					keyword=keyword,
+					page_no=1
+				)
+			)
 
 	def parse_search(self, response, keyword, page_no):
 		"""
