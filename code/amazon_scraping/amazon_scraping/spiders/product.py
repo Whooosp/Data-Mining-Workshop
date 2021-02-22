@@ -107,19 +107,53 @@ class ProductSpider(Spider):
 		# Convert response HTML to a beautiful soup for scraping
 		soup = BeautifulSoup(markup=response.text, features='lxml')
 
-		# TODO (5) Find all search result items in soup
+		#(5) Find all search result items in soup
+		items = soup.find_all(attrs={ 'data-component-type' : 's-search-result'})
 
-		# TODO (6) Yield requests for each item found
-		#	TODO (6.1) Extract asin from item
-		#	TODO (6.2) Yield requests if asin is found
-		#		TODO (6.2.1) Yield product overview request
-		#		TODO (6.2.2) Yield first product review request
+		
 
-		# TODO (7) Yield request for next page
+		#  (6) Yield requests for each item found
+		#	 (6.1) Extract asin from item
+		#	 (6.2) Yield requests if asin is found
+		#		 (6.2.1) Yield product overview request
+		#		 (6.2.2) Yield first product review request
+
+		for item in items:
+			asin = item.get(key='data-asin')
+			if asin:
+				yield Request(
+					url=self.overview_url(key=asin),
+					callback=self.parse_overview,
+					cb_kwargs=dict(
+						asin=asin,
+						keyword=keyword
+					)
+				)
+				yield Request(
+					url=self.reviews_url(key=asin,page_no=1),
+					callback=self.parse_reviews,
+					cb_kwargs=dict(
+						asin=asin,
+						page_no=1
+					)
+				)
+
+		#  (7) Yield request for next page
 		# Check if this page had some items
-		#	TODO (7.1) Set next page number
-		#	TODO (7.2) Check if next page number is within limit
-		#		TODO (7.2.1) Recursively yield a request to next page
+		#	 (7.1) Set next page number
+		#	 (7.2) Check if next page number is within limit
+		#		 (7.2.1) Recursively yield a request to next page
+		if items:
+			next_pg_no = page_no + 1
+			if page_no <= self.MAX_SEARCH_PAGES:
+			 yield Request(
+				url=self.search_url(key=keyword, page_no=next_pg_no),
+				callback=self.parse_search,
+				cb_kwargs=dict(
+					keyword=keyword,
+					page_no=next_pg_no
+				)
+			)
 
 	def parse_overview(self, response, asin, keyword):
 		"""
@@ -133,13 +167,23 @@ class ProductSpider(Spider):
 		# Convert response HTML to a beautiful soup for scraping
 		soup = BeautifulSoup(markup=response.text, features='lxml')
 
-		# TODO (8.1) Extract and clean product price
+		#  (8.1) Extract and clean product price
+		price = soup.find(attrs={'data-feature-name': 'priceInsideBuyBox'}).get_text().strip()
+		# getting rid of $
+		price = price[1:]
 
-		# TODO (8.2) Extract and clean average number of stars
 
-		# TODO (8.3) Extract and clean product name
+		#  (8.2) Extract and clean average number of stars
+		rating = soup.find(attrs={'data-hook': 'rating-out-of-text'}).get_text().strip()
+		# only getting the number
+		rating = rating.split()[0]
 
-		# TODO (8.4) Create a ProductItem and yield it
+		#  (8.3) Extract and clean product name
+		name = soup.find(attrs= {'data-feature-name': 'title'}).get_text().strip()
+
+
+		#  (8.4) Create a ProductItem and yield it
+		yield ProductItem(keyword=keyword, asin=asin, price=price, avg_stars=rating, name=name)
 
 	def parse_reviews(self, response, asin, page_no):
 		"""
